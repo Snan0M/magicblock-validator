@@ -166,13 +166,8 @@ impl Leader {
         chain_slot: Arc<AtomicU64>,
     ) -> CommittorService {
         let er_rpc = Arc::new(RpcClient::new(config.aperture.listen.http()));
-        let callbacks = Arc::new(ActionsCallbackService::new(
-            er_rpc.clone(),
-            config.engine.authority.local.insecure_clone(),
-            engine.clone(),
-        ));
+        let callbacks = Arc::new(ActionsCallbackService::new(er_rpc.clone(), engine.clone()));
         CommittorService::new(
-            config.engine.authority.local.insecure_clone(),
             CommittorConfig {
                 rpc_uri: config.rpc_url().to_owned(),
                 commitment: CommitmentConfig::confirmed(),
@@ -206,7 +201,6 @@ impl Leader {
             &endpoints,
             CommitmentConfig::confirmed(),
             engine.clone(),
-            config.engine.authority.local.insecure_clone(),
             provider_config,
             &config.chainlink,
             chain_slot,
@@ -251,7 +245,7 @@ impl Leader {
     }
 
     async fn ensure_magic_fee_vault_on_chain(engine: &Engine, rpc_url: String) -> ApiResult<()> {
-        let validator_keypair = engine.signer().insecure_clone();
+        let validator_keypair = engine.signer();
         let validator_pubkey = validator_keypair.pubkey();
         let vault_pubkey =
             delegation_program_api::pda::magic_fee_vault_pda_from_validator(&validator_pubkey);
@@ -284,7 +278,7 @@ impl Leader {
             let tx = solana_transaction::Transaction::new_signed_with_payer(
                 &[ix],
                 Some(&validator_pubkey),
-                &[&validator_keypair],
+                &[validator_keypair],
                 blockhash,
             );
             rpc.send_and_confirm_transaction(&tx).await.map_err(|err| {
@@ -312,7 +306,7 @@ impl Leader {
             let tx = solana_transaction::Transaction::new_signed_with_payer(
                 &[ix],
                 Some(&validator_pubkey),
-                &[&validator_keypair],
+                &[validator_keypair],
                 blockhash,
             );
             rpc.send_and_confirm_transaction(&tx).await.map_err(|err| {
